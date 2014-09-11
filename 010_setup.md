@@ -11,7 +11,7 @@ The next step is to compile Bullet from the source in order to use it in our C++
 Preparing Makefiles using CMake
 -------------------------------
 
-We will use CMake to prepare the Makefiles in order to compile Bullet into C++ binaries. CMake is a building tool that makes the building process simpler in different operating systems. You can get it [here][cmake-download] on its official website, under the *Binary distributions* section.
+We will use CMake to prepare the Makefiles in order to compile Bullet into C++ binaries. CMake is a building tool that makes the building process simpler in different operating systems. You can get it [here][cmake-download] on its official website, under the *Binary distributions* section. These procedures can be followed not only to compile Bullet Physics, but also any other libraries that can be compiled with CMake.
 
 Create a folder next to your Bullet source folder. For example, *D:\tuto\bullet-2.82-r2704-build*. This will contain the compiled files.
 Open CMake-gui. Next to *Where is the source code:*, browse to the source folder. Next to *Where to build the binaries:*, browse to the new empty folder. This looks like this:

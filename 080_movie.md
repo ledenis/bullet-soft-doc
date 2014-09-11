@@ -8,36 +8,41 @@ The approach chosen here consists in reading the OpenGL frames (as they are rend
 Preparation
 -----------
 
-### Tools used
+### Tools Used
 
-To save the *PNG* files, the official **libpng** is chosen for this task. It is the most natural solution. Libpng depends on zlib, a compression library. The version used in this chapter is 1.6.13, with zlib 1.2.8.
+#### libpng
 
-The movie encoding task is accomplished by the tool **ffmpeg** as a command line executable. It can be directly downloaded on its [official website][ffmpeg-download] under the *Get the packages* section. On Windows, it is built daily.
+To save the *PNG* files, the official **libpng** is chosen for this task. It is the most natural solution. Libpng depends on *zlib*, a compression library. The version used in this chapter is 1.6.13, with zlib 1.2.8.
 
-Libpng needs to be compiled, the source can be found on [sourceforge.net][libpng-sourceforge]. Zlib binaries can be downloaded on the [official website][zlib-website].
+Libpng needs to be compiled, the source can be found on its [sourceforge page][libpng-sourceforge]. The dependent zlib binaries can be downloaded on its [official website][zlib-website].
 
-Compiling libpng with CMake
+Once these are done, to compile libpng with *CMake*, you need to:
 
-* Download compiled zlib
-* Put the folder in root of libpng (next to cmakelists)
-* Rename zlib folder to "zlib"
-* In CMakeLists add at beginning:
-set(ZLIB_ROOT zlib)
-* Compile (cmake then make)
+* Put the folder of zlib into the root of libpng (next to *CMakeLists.txt*)
+* Rename this zlib folder to "zlib"
+* In CMakeLists.txt, add the following line at the beginning:
+	`set(ZLIB_ROOT zlib)`
+* Compile by running CMake, then make (or mingw32-make) (the *Setting Up a Bullet Application* chapter can be helpful)
 
 
-Usage:
-include:
-<libpng source>/
-<libpng build>/ (pnglibconf.h is generated here)
+Here are the configuration needed to use the libpng in the C++ project:
 
-lib:
-<libpng build>/
-png
+**include:**
+*&lt;libpng source folder>/*
+*&lt;libpng build folder>/* (*pnglibconf.h* is generated here)
 
-copy libpng16.dll
+**lib directory:**
+*&lt;libpng build folder>/*
+**lib name**
+*png*
 
--------------------------------
+And do not forget to copy the *libpng16.dll* file to the project if you are on Windows.
+
+#### FFmpeg
+
+The movie encoding task is accomplished by the tool **FFmpeg** as a command line executable. In our implementation, we will call FFmpeg as an external program, not as a library. It can be downloaded through its [official website][ffmpeg-download] under the *Get the packages* section. 
+
+The Windows version, which is served by http://ffmpeg.zeranoe.com/builds/, is built and released daily (and does not seem to indicate a version number like 2.x.x). Once the package is extracted, the executable we will use is *ffmpeg.exe* and is under the *bin/* folder.
 
 Implementation
 --------------
@@ -134,8 +139,8 @@ Calling all these functions each iteration of a simulation results as a series o
 
 ### Generating the movie file
 
-To generate the movie file, ffmpeg is one 
-ffmpeg
+To generate the movie file, FFmpeg is one 
+FFmpeg
 
 ----------------------
 

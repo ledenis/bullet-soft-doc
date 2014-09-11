@@ -377,31 +377,30 @@ td:not(.linenos) .linenodiv { padding: 0 !important; }
 <p>Creating a movie file of a simulation can be done in different ways. One can capture using an external program or directly from the simulation program itself. The latter is really practical but requires this feature to be implemented. Unfortunately, Bullet does not provide a solution to do it. </p>
 <p>The approach chosen here consists in reading the OpenGL frames (as they are rendered on screen), storing them as <em>PNG</em> image files in the hard drive, then generating the movie file from the images. <em>PNG</em> format is better than other ones such as <em>JPEG</em>, <em>GIF</em>, <em>BMP</em> due to its losless compression, which means the image quality is preserved through the size compression.</p>
 <h2 id="preparation"><a name="user-content-preparation" href="#preparation" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Preparation</h2>
-<h3 id="tools-used"><a name="user-content-tools-used" href="#tools-used" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Tools used</h3>
-<p>To save the <em>PNG</em> files, the official <strong>libpng</strong> is chosen for this task. It is the most natural solution. Libpng depends on zlib, a compression library. The version used in this chapter is 1.6.13, with zlib 1.2.8.</p>
-<p>The movie encoding task is accomplished by the tool <strong>ffmpeg</strong> as a command line executable. It can be directly downloaded on its <a href="http://ffmpeg.org/download.html">official website</a> under the <em>Get the packages</em> section. On Windows, it is built daily.</p>
-<p>Libpng needs to be compiled, the source can be found on <a href="http://sourceforge.net/projects/libpng/files/">sourceforge.net</a>. Zlib can be downloaded on the <a href="http://www.zlib.net/">official website</a>.</p>
-<hr />
-<p>Version 1.6.13<br />
-Requires zlib (used 1.2.8)<br />
-Compile with CMake</p>
+<h3 id="tools-used"><a name="user-content-tools-used" href="#tools-used" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Tools Used</h3>
+<h4 id="libpng"><a name="user-content-libpng" href="#libpng" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>libpng</h4>
+<p>To save the <em>PNG</em> files, the official <strong>libpng</strong> is chosen for this task. It is the most natural solution. Libpng depends on <em>zlib</em>, a compression library. The version used in this chapter is 1.6.13, with zlib 1.2.8.</p>
+<p>Libpng needs to be compiled, the source can be found on its <a href="http://sourceforge.net/projects/libpng/files/">sourceforge page</a>. The dependent zlib binaries can be downloaded on its <a href="http://www.zlib.net/">official website</a>.</p>
+<p>Once these are done, to compile libpng with <em>CMake</em>, you need to:</p>
 <ul>
-<li>Download compiled zlib</li>
-<li>Put the folder in root of libpng (next to cmakelists)</li>
-<li>Rename zlib folder to &ldquo;zlib&rdquo;</li>
-<li>In CMakeLists add at beginning:<br />
-set(ZLIB_ROOT zlib)</li>
-<li>Compile (cmake then make)</li>
+<li>Put the folder of zlib into the root of libpng (next to <em>CMakeLists.txt</em>)</li>
+<li>Rename this zlib folder to &ldquo;zlib&rdquo;</li>
+<li>In CMakeLists.txt, add the following line at the beginning:<br />
+<code>set(ZLIB_ROOT zlib)</code></li>
+<li>Compile by running CMake, then make (or mingw32-make) (the <em>Setting Up a Bullet Application</em> chapter can be helpful)</li>
 </ul>
-<p>Usage:<br />
-include:<br />
-<libpng source>/<br />
-<libpng build>/ (pnglibconf.h is generated here)</p>
-<p>lib:<br />
-<libpng build>/<br />
-png</p>
-<p>copy libpng16.dll</p>
-<hr />
+<p>Here are the configuration needed to use the libpng in the C++ project:</p>
+<p><strong>include:</strong><br />
+<em>&lt;libpng source folder&gt;/</em><br />
+<em>&lt;libpng build folder&gt;/</em> (<em>pnglibconf.h</em> is generated here)</p>
+<p><strong>lib directory:</strong><br />
+<em>&lt;libpng build folder&gt;/</em><br />
+<strong>lib name</strong><br />
+<em>png</em></p>
+<p>And do not forget to copy the <em>libpng16.dll</em> file to the project if you are on Windows.</p>
+<h4 id="ffmpeg"><a name="user-content-ffmpeg" href="#ffmpeg" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>FFmpeg</h4>
+<p>The movie encoding task is accomplished by the tool <strong>FFmpeg</strong> as a command line executable. In our implementation, we will call FFmpeg as an external program, not as a library. It can be downloaded through its <a href="http://ffmpeg.org/download.html">official website</a> under the <em>Get the packages</em> section. </p>
+<p>The Windows version, which is served by <a href="http://ffmpeg.zeranoe.com/builds/">http://ffmpeg.zeranoe.com/builds/</a>, is built and released daily (and does not seem to indicate a version number like 2.x.x). Once the package is extracted, the executable we will use is <em>ffmpeg.exe</em> and is under the <em>bin/</em> folder.</p>
 <h2 id="implementation"><a name="user-content-implementation" href="#implementation" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Implementation</h2>
 <h3 id="reading-the-opengl-frames"><a name="user-content-reading-the-opengl-frames" href="#reading-the-opengl-frames" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Reading the OpenGL frames</h3>
 <p>The first step is to read the pixels of the OpenGL frame. This is done with the function <code>glReadPixels()</code>. Its prototype is:</p>
@@ -474,8 +473,8 @@ delete buffer;</code></pre>
             delete buffer;</code></pre>
 <hr />
 <h3 id="generating-the-movie-file"><a name="user-content-generating-the-movie-file" href="#generating-the-movie-file" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Generating the movie file</h3>
-<p>To generate the movie file, ffmpeg is one <br />
-ffmpeg</p>
+<p>To generate the movie file, FFmpeg is one <br />
+FFmpeg</p>
 <hr />
 <p>-f image2<br />
 Demuxer from image files<br />
