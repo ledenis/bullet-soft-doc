@@ -1,9 +1,15 @@
-Generating a movie
+Generating a Movie
 ==================
 
-Creating a movie file of a simulation can be done in different ways. One can capture using an external program or directly from the simulation program itself. The latter is really practical but requires this feature to be implemented. Unfortunately, Bullet does not provide a solution to do it. 
+Creating a movie file of a simulation can be done in different ways. One can capture the video using an external program or directly from the simulation program itself. The latter is really practical but requires some effort to implement this feature. Unfortunately, Bullet does not provide a solution to do it. 
 
-The approach chosen here consists in reading the OpenGL frames (as they are rendered on screen), storing them as *PNG* image files in the hard drive, then generating the movie file from the images. *PNG* format is better than other ones such as *JPEG*, *GIF*, *BMP* due to its losless compression, which means the image quality is preserved through the size compression.
+The approach chosen here consists in 3 steps:
+
+* Reading the OpenGL frames (as they are rendered on screen)
+* Storing them as *PNG* image files in the hard drive, then
+* Generating the movie file from the images.
+
+The *PNG* format is preferred over other formats such as *JPEG*, *GIF*, *BMP* due to its losless compression, which means the image quality is preserved through the size compression.
 
 Preparation
 -----------
@@ -87,13 +93,13 @@ The steps 1 and 2 can be implemented as follows:
 	image.width = width;
 	image.height = height;
 
-The function `png_image_write_to_file()` is used at the third step, its prototype is:
+For the third step, `png_image_write_to_file()` is the function we need, and its prototype is shown below.
 
 	int png_image_write_to_file (png_imagep image,
 	      const char *file, int convert_to_8bit, const void *buffer,
 	      png_int_32 row_stride, const void *colormap);
 
-We do not use the two last parameters, thus we set them to 0.
+We do not use the two last parameters (`row_stride` and `colormap`), thus we set them to 0.
 
 	char filename[50];
 	sprintf(filename, "screen%s_%d.png", m_timeStr, m_frameNb);
@@ -102,75 +108,74 @@ We do not use the two last parameters, thus we set them to 0.
 
 	delete buffer;
 
-Calling all these functions each iteration of a simulation results as a series of images created in the disk space. To reconstruct a movie from these files, it is important to assign numbers sequentially to them, hence the inclusion of a counter `m_frameNb` into the file name. Though it is optional, a timestep `m_timeStr` is used to prevent unwanted behaviour if images of previous movie recording remain.
+Calling all these functions each iteration of a simulation results as a series of images created in the disk space, as illustrated below.
 
+![][png-files]
 
+To reconstruct a movie from these files, it is important to assign numbers sequentially to them, hence the inclusion of a counter `m_frameNb` into the file name. Though it is optional, a timestep `m_timeStr` is used to prevent unwanted behaviour if images of previous movie recordings remain.
 
--------------------------
-
-
-
-				// get screen pixels into buffer
-				GLubyte* buffer = new GLubyte[width * height * 4]; // 3 for R, G and B
-				glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-
-				// write to png file
-				png_image image;
-				memset(&image, 0, sizeof image);
-				image.version = PNG_IMAGE_VERSION;
-				image.format = PNG_FORMAT_RGBA;
-				image.width = width;
-				image.height = height;
-
-				char* filename = new char[16];
-				static int frameNb = 0;
-				sprintf(filename, "screen%d.png", frameNb);
-				frameNb++;
-				cout << filename << endl;
-				png_image_write_to_file(&image, filename, 0, // convert to 8 bit
-						buffer, 0, // row stride
-						0); // color map
-				cout << image.message << endl;
-				cout << "test" << endl;
-
-				delete buffer;
-
-----------------				
+Note: The images are flipped vertically due to the different way the pixels are stored between png and OpenGL. This will be fixed in the next step.
 
 ### Generating the movie file
 
-To generate the movie file, FFmpeg is one 
-FFmpeg
+To generate the movie file using FFmpeg, we call this external program as if it was run with a terminal, in command line. The function `system()` enables us to do this.
 
-----------------------
+As a simple example of FFmpeg usage, if the following is input into a terminal:
 
--f image2
-Demuxer from image files
-To use when converting images files into video
+	ffmpeg -f image2 -i 'screen_%d.png' video.avi
 
--r 25
-Framerate: (before -i for input, before output file name for output)
+...then ffmpeg is run and, from a sequence of images named sequentially *screen_X.png* (with X a number), will create an *AVI* video file named *video.avi*.
 
--i 'screen_%03d.jpg'
-Input file name's pattern: %03d means 0-padded number with 3 digits, like 001, 002, ..., 999
+However, the command we will issue is more complex because we need some adjustments. It looks like this:
 
--start_number 1
-Start number for the pattern
+	ffmpeg -f image2 -r 1/0.015 -i screen<timeStr>_%d.png -vf vflip -y -r 25 movie<timeStr>.avi
 
--vf 'vflip'
-Flip vertically
+Here are the meaning of each argument:
 
--y
-Overwrite if output file exists
+**-f image2**:
+Must be used when converting images files into video
 
-video.avi
+**-r 1/0.015**:
+Input framerate: if it is positionned before *-i*, this indicates the input framerate. 0.015 means that between each image file, there is a delay of 0.015 seconds.
+
+**-i screen&lt;timeStr>_%d.png**:
+Input file name's pattern: *%d* means a *number*, like in the C function `printf()`. 
+
+**-vf vflip**:
+Flip vertically (because the image files were already flipped vertically, we need this to revert them back)
+
+**-y**:
+Overwrite if the output file exists
+
+**-r 25**:
+Output framerate: this one is after *-i*, therefore it corresponds to the output framerate. It adjusts the output rate to 25 fps by duplicating or dropping input frames
+
+**movie&lt;timeStr>.avi**:
 Output file name
 
-	ffmpeg -f image2 -r 1/2 -i 'screen_%03d.jpg' -start_number 1 -y -r 5 video.avi
+The following code executes the previous command, then cleans up the image files. Please note that `sprintf()` is used only to inject the timestamp `m_timeStr` into the command.
 
------------------------
+	void Program::generateMovie() {
+		char command[200];
+
+		sprintf(command,
+			"ffmpeg -f image2 -r 1/0.015 -i screen%s_%%d.png -vf vflip -y -r 25 movie%s.avi",
+			m_timeStr, m_timeStr);
+		cout << "Runnning: " << command << endl;
+		system(command);
+		cout << "Removing temporary images" << endl;
+		for (int i=0; i<m_frameNb; i++) {
+			string str = string("screen") + m_timeStr + "_" + to_string(i) + ".png";
+			remove(str.c_str());
+		}
+	}
+
+After this, the video file should be created.
+
+[png-files]: img/movie/01_png-files.png
 
 [ffmpeg-download]: http://ffmpeg.org/download.html
 [libpng-sourceforge]: http://sourceforge.net/projects/libpng/files/
 [zlib-website]: http://www.zlib.net/
 [libpng-manual]: http://www.libpng.org/pub/png/libpng-manual.txt
+

@@ -47,7 +47,7 @@ Outline
 
 * [Voronoi Fracture and Destruction][voronoi]
 
-* [Movies][movie]
+* [Generating a Movie][movie]
 
 
 [bullet-logo]: img/bullet-logo.png

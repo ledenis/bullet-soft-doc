@@ -373,9 +373,15 @@ td:not(.linenos) .linenodiv { padding: 0 !important; }
   p, h2, h3 { orphans: 3; widows: 3; }
   h2, h3 { page-break-after: avoid; }
 }
-</style><title>080_movie</title></head><body><h1 id="generating-a-movie"><a name="user-content-generating-a-movie" href="#generating-a-movie" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Generating a movie</h1>
-<p>Creating a movie file of a simulation can be done in different ways. One can capture using an external program or directly from the simulation program itself. The latter is really practical but requires this feature to be implemented. Unfortunately, Bullet does not provide a solution to do it. </p>
-<p>The approach chosen here consists in reading the OpenGL frames (as they are rendered on screen), storing them as <em>PNG</em> image files in the hard drive, then generating the movie file from the images. <em>PNG</em> format is better than other ones such as <em>JPEG</em>, <em>GIF</em>, <em>BMP</em> due to its losless compression, which means the image quality is preserved through the size compression.</p>
+</style><title>080_movie</title></head><body><h1 id="generating-a-movie"><a name="user-content-generating-a-movie" href="#generating-a-movie" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Generating a Movie</h1>
+<p>Creating a movie file of a simulation can be done in different ways. One can capture the video using an external program or directly from the simulation program itself. The latter is really practical but requires some effort to implement this feature. Unfortunately, Bullet does not provide a solution to do it. </p>
+<p>The approach chosen here consists in 3 steps:</p>
+<ul>
+<li>Reading the OpenGL frames (as they are rendered on screen)</li>
+<li>Storing them as <em>PNG</em> image files in the hard drive, then</li>
+<li>Generating the movie file from the images.</li>
+</ul>
+<p>The <em>PNG</em> format is preferred over other formats such as <em>JPEG</em>, <em>GIF</em>, <em>BMP</em> due to its losless compression, which means the image quality is preserved through the size compression.</p>
 <h2 id="preparation"><a name="user-content-preparation" href="#preparation" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Preparation</h2>
 <h3 id="tools-used"><a name="user-content-tools-used" href="#tools-used" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Tools Used</h3>
 <h4 id="libpng"><a name="user-content-libpng" href="#libpng" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>libpng</h4>
@@ -433,63 +439,58 @@ image.format = PNG_FORMAT_RGB;
 image.width = width;
 image.height = height;
 </code></pre>
-<p>The function <code>png_image_write_to_file()</code> is used at the third step, its prototype is:</p>
+<p>For the third step, <code>png_image_write_to_file()</code> is the function we need, and its prototype is shown below.</p>
 <pre><code>int png_image_write_to_file (png_imagep image,
       const char *file, int convert_to_8bit, const void *buffer,
       png_int_32 row_stride, const void *colormap);
 </code></pre>
-<p>We do not use the two last parameters, thus we set them to 0.</p>
+<p>We do not use the two last parameters (<code>row_stride</code> and <code>colormap</code>), thus we set them to 0.</p>
 <pre><code>char filename[50];
 sprintf(filename, &ldquo;screen%s_%d.png&rdquo;, m_timeStr, m_frameNb);
 m_frameNb++;
 png_image_write_to_file(&amp;image, filename, 0, buffer, 0, 0);
 
 delete buffer;</code></pre>
-<p>Calling all these functions each iteration of a simulation results as a series of images created in the disk space. To reconstruct a movie from these files, it is important to assign numbers sequentially to them, hence the inclusion of a counter <code>m_frameNb</code> into the file name. Though it is optional, a timestep <code>m_timeStr</code> is used to prevent unwanted behaviour if images of previous movie recording remain.</p>
-<hr />
-<pre><code>            // get screen pixels into buffer
-            GLubyte* buffer = new GLubyte[width * height * 4]; // 3 for R, G and B
-            glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-
-            // write to png file
-            png_image image;
-            memset(&amp;image, 0, sizeof image);
-            image.version = PNG_IMAGE_VERSION;
-            image.format = PNG_FORMAT_RGBA;
-            image.width = width;
-            image.height = height;
-
-            char* filename = new char[16];
-            static int frameNb = 0;
-            sprintf(filename, &ldquo;screen%d.png&rdquo;, frameNb);
-            frameNb++;
-            cout &lt;&lt; filename &lt;&lt; endl;
-            png_image_write_to_file(&amp;image, filename, 0, // convert to 8 bit
-                    buffer, 0, // row stride
-                    0); // color map
-            cout &lt;&lt; image.message &lt;&lt; endl;
-            cout &lt;&lt; &ldquo;test&rdquo; &lt;&lt; endl;
-
-            delete buffer;</code></pre>
-<hr />
+<p>Calling all these functions each iteration of a simulation results as a series of images created in the disk space, as illustrated below.</p>
+<p><img alt="" src="img/movie/01_png-files.png" /></p>
+<p>To reconstruct a movie from these files, it is important to assign numbers sequentially to them, hence the inclusion of a counter <code>m_frameNb</code> into the file name. Though it is optional, a timestep <code>m_timeStr</code> is used to prevent unwanted behaviour if images of previous movie recordings remain.</p>
+<p>Note: The images are flipped vertically due to the different way the pixels are stored between png and OpenGL. This will be fixed in the next step.</p>
 <h3 id="generating-the-movie-file"><a name="user-content-generating-the-movie-file" href="#generating-the-movie-file" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Generating the movie file</h3>
-<p>To generate the movie file, FFmpeg is one <br />
-FFmpeg</p>
-<hr />
-<p>-f image2<br />
-Demuxer from image files<br />
-To use when converting images files into video</p>
-<p>-r 25<br />
-Framerate: (before -i for input, before output file name for output)</p>
-<p>-i &lsquo;screen_%03d.jpg&rsquo;<br />
-Input file name&rsquo;s pattern: %03d means 0-padded number with 3 digits, like 001, 002, &hellip;, 999</p>
-<p>-start_number 1<br />
-Start number for the pattern</p>
-<p>-vf &lsquo;vflip&rsquo;<br />
-Flip vertically</p>
-<p>-y<br />
-Overwrite if output file exists</p>
-<p>video.avi<br />
+<p>To generate the movie file using FFmpeg, we call this external program as if it was run with a terminal, in command line. The function <code>system()</code> enables us to do this.</p>
+<p>As a simple example of FFmpeg usage, if the following is input into a terminal:</p>
+<pre><code>ffmpeg -f image2 -i &lsquo;screen_%d.png&rsquo; video.avi</code></pre>
+<p>&hellip;then ffmpeg is run and, from a sequence of images named sequentially <em>screen_X.png</em> (with X a number), will create an <em>AVI</em> video file named <em>video.avi</em>.</p>
+<p>However, the command we will issue is more complex because we need some adjustments. It looks like this:</p>
+<pre><code>ffmpeg -f image2 -r 1/0.015 -i screen&lt;timeStr&gt;_%d.png -vf vflip -y -r 25 movie&lt;timeStr&gt;.avi
+</code></pre>
+<p>Here are the meaning of each argument:</p>
+<p><strong>-f image2</strong>:<br />
+Must be used when converting images files into video</p>
+<p><strong>-r 1/0.015</strong>:<br />
+Input framerate: if it is positionned before <em>-i</em>, this indicates the input framerate. 0.015 means that between each image file, there is a delay of 0.015 seconds.</p>
+<p><strong>-i screen&lt;timeStr&gt;_%d.png</strong>:<br />
+Input file name&rsquo;s pattern: <em>%d</em> means a <em>number</em>, like in the C function <code>printf()</code>. </p>
+<p><strong>-vf vflip</strong>:<br />
+Flip vertically (because the image files were already flipped vertically, we need this to revert them back)</p>
+<p><strong>-y</strong>:<br />
+Overwrite if the output file exists</p>
+<p><strong>-r 25</strong>:<br />
+Output framerate: this one is after <em>-i</em>, therefore it corresponds to the output framerate. It adjusts the output rate to 25 fps by duplicating or dropping input frames</p>
+<p><strong>movie&lt;timeStr&gt;.avi</strong>:<br />
 Output file name</p>
-<pre><code>ffmpeg -f image2 -r 1/2 -i &lsquo;screen_%03d.jpg&rsquo; -start_number 1 -y -r 5 video.avi</code></pre>
-<hr /></body></html>
+<p>The following code executes the previous command, then cleans up the image files. Please note that <code>sprintf()</code> is used only to inject the timestamp <code>m_timeStr</code> into the command.</p>
+<pre><code>void Program::generateMovie() {
+    char command[200];
+
+    sprintf(command,
+        &ldquo;ffmpeg -f image2 -r 1/0.015 -i screen%s_%%d.png -vf vflip -y -r 25 movie%s.avi&rdquo;,
+        m_timeStr, m_timeStr);
+    cout &lt;&lt; &ldquo;Runnning: &rdquo; &lt;&lt; command &lt;&lt; endl;
+    system(command);
+    cout &lt;&lt; &ldquo;Removing temporary images&rdquo; &lt;&lt; endl;
+    for (int i=0; i&lt;m_frameNb; i++) {
+        string str = string(&ldquo;screen&rdquo;) + m_timeStr + &ldquo;_&rdquo; + to_string(i) + &ldquo;.png&rdquo;;
+        remove(str.c_str());
+    }
+}</code></pre>
+<p>After this, the video file should be created.</p></body></html>
