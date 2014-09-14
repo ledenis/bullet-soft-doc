@@ -1,12 +1,14 @@
 More on Soft Bodies
 ===================
 
+In Bullet, Soft bodies offer many features and possible configurations. Unfortunately, they are poorly documented, but this chapter constitutes a good starting point to learn about them.
+
 Config
 ------
 
 ### Gravity
 
-Soft bodies gravity is set separately from the rigid bodies one.
+Soft bodies gravity is set separately from the rigid bodies one. It is apparently a design problem and [may be fixed][separate-gravity-issue] in a future rewrite of Bullet's soft bodies.
 
 	btVector3 gravity(0, -10, 0);
 
@@ -18,7 +20,7 @@ Soft bodies gravity is set separately from the rigid bodies one.
 
 ### Cluster
 
-A cluster consists of a group of nodes that reacts to collisions together. using clusters for collisions would improve performance, but soft bodies would behave more like rigid bodies. The syntax is:
+A *cluster* consists of a group of nodes that reacts to collisions together. Using clusters for collisions would improve performance, but soft bodies would behave more like rigid bodies. The syntax is:
 
 	softBody->generateCluster(k);
 
@@ -69,7 +71,7 @@ Here is a list from *btSoftBody.h* (again):
 		tPSolverArray			m_dsequence;	// Drift solvers sequence
 	};
 
-Or you can get [this pdf file][soft-body-properties] posted on the Bullet forum for more details.
+Or you can get [this pdf file][soft-body-properties] posted on the Bullet forums by *dphil* for more details.
 
 
 ### Collision flags
@@ -93,9 +95,9 @@ The available values are (from *btSoftBody.h*):
 		END
 	};};
 
-According to this, the default is `btSoftBody::fCollision::SDF_RS`. The `CL_*` flags involve clusters, `generateClusters()` must naturally be called in order to have any effect.
+According to these lines of code, the default is `btSoftBody::fCollision::SDF_RS`. The `CL_*` flags involve clusters, thus if you want to use them, you must call `generateClusters()` in order to see any effect. The following line demonstrates how to set collisions flags.
 
-	softBody->m_cfg.collisions = btSoftBody::fCollision::CL_SS + btSoftBody::fCollision::CL_RS
+	softBody->m_cfg.collisions = btSoftBody::fCollision::CL_SS + btSoftBody::fCollision::CL_RS;
 
 
 ### Collisions problems
@@ -108,7 +110,7 @@ However, since density = mass / volume, the side-effect of this method is the mo
 
 ### Joints
 
-In Bullet, *joints* are the equivalent of rigid body *constraints* for soft bodies. They allow us to link soft bodies together, or between a soft and a rigid body. There are 2 types of joints:
+In Bullet, *joints* are the equivalent of rigid body *constraints* for soft bodies. But contrary to constraints, joints allow us to link soft bodies together, or between a soft and a rigid body. There are 2 types of joints:
 
 * Linear joints (`LJoint`)
 * Angular joints (`AJoint`)
@@ -129,9 +131,36 @@ Angular joints link two bodies to the same orientation around an axis. The axis 
 
 ![Example of angular joint][angular-joint]
 
+Using these joints together, it is possible to tightly attach a soft body to a rigid body.
+
+![][bunny-with-sphere]
+
+To remove a joint, get the `btSoftBody::Joint` object from the `m_joints` attribute of the soft body. Then set `m_delete` to `true`.
+
+	joint = softbody->m_joints[softbody->m_joints.size()-1];
+	joint->m_delete = true;
+
+It will be marked and be removed automatically after the next simulation step.
+
+### Applying force
+
+It is possible to apply a force to a soft body with the method `addForce()`. From 
+
+	/* Add force (or gravity) to the entire body							*/ 
+	void				addForce(		const btVector3& force);
+	/* Add force (or gravity) to a node of the body							*/ 
+	void				addForce(		const btVector3& force, int node);
+
+For example, the following apply a force of 100000 units in the X axis direction:
+
+	btVector3 direction(1, 0, 0);
+	softBody->addForce(direction * 100000);
+
 
 [linear-joint]: img/soft-more/01_linear_joint.png
 [angular-joint]: img/soft-more/02_angular_joint.png
+[bunny-with-sphere]: img/soft-more/03_bunny-with-sphere.png
 
+[separate-gravity-issue]: http://code.google.com/p/bullet/issues/detail?id=505
 [soft-body-properties]: http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?p=24280#p24280
 

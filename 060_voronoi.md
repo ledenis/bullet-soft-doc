@@ -1,13 +1,13 @@
 Voronoi Fracture and Destruction
 ================================
 
-To simulate the destruction of an object in 2D or 3D, an algorithm called *Voronoi fracturing* (or shattering) exists. It uses a mathematical concept called *Voronoi diagram*, hence its name. A Voronoi diagram describes the partitioning of the space from a set of points into regions, called *cells*. The cells are guaranteed to be convex and no overlapped, and will be the shards of the fracture. You can see a representation in 2D below.
+To simulate the destruction of an object in 2D or 3D, an algorithm called *Voronoi fracturing* (or *shattering*) exists. It uses a mathematical concept called *Voronoi diagram*, hence its name. A Voronoi diagram describes how to partition a space from a set of points into regions, called *cells*. The cells are guaranteed to be convex and no overlapped, and will be the shards of the fracture. You can see a representation in 2D below.
 
 ![A Voronoi diagram][voronoi-diagram]
 
 ([Source][voronoi-diagram-source])
 
-In this chapter, the algorithm is explained, along with the code, which comes from the demos of Bullet Physics.
+The algorithm and implementation which is explained in this chapter are extensively adapted from the demo VoronoiFracture from Bullet Physics.
 
 The approach
 -------------
@@ -22,18 +22,18 @@ The pseudo code is shown below (adapted from the [forum post][forum-voronoi] of 
 	    foreach other sorted_point by distance from current_point
 	        if distance > max_distance
 	            break # rest of sorted points too far, we're done with this current_point
-	        add new plane to planes, normal and distance = -(sorted_point - current_point) / 2
+	        add new plane to planes, normal and distance = (sorted_point - current_point) / 2
 	        collect vertices (3-plane intersections) by planes that fall inside all planes only
 	        delete planes that fell outside
 	        max_distance = (furthest vertex from current_point) * 2
 	    we now have vertices and/by planes for one voronoi 3D shard,
-	    process vertices by plane (sort counter-clockwise, etc.) to get faces and edges
+	    process vertices by plane to get faces and edges
 
-A 2D representation of the algorithm at the end of one iteration is shown below. A shard is generated and is represented by the white area. The red point is the current_point, the black ones are the other Voronoi points which are sorted, the black and red lines represent the planes. The blue points represent the vertices at planes intersections.
+For example, for 5 Voronoi cell points, a 2D representation of the algorithm at the end of one iteration (the outer *foreach* loop) is shown below. A shard is generated and is represented by the white area. The red point is the *current_point*, the black ones are the other Voronoi points (which are *sorted_points*), the black and red lines represent the *planes*. The blue X represent the vertices at planes intersections. Note that the intersections which are *outside* the shard are not kept. In 3D, theses intersections would be formed by 3 planes.
 
 ![][intersection-done]	    
 
-This is a brute force method because it considers all Voronoi points, not only the neighbours. Another approach is to compute the Delaunay tetrahedralization, which connects points with tetrahedrons. From it, the Voronoi diagram can be extracted, since it is its dual graph. But the method detailed here does not use Delaunay tetrahedralization.
+This is a brute force method because it considers all Voronoi points, not only the neighbours. Another approach is to compute the Delaunay tetrahedralization, which connects points with tetrahedrons. From it, the Voronoi diagram can be extracted, since it is its dual graph. But this approach is not discussed here, since the method detailed here does not use Delaunay tetrahedralization.
 
 
 The implementation
@@ -139,7 +139,7 @@ The comparator `pointCmp()` must be defined elsewhere. Note that `curVoronoiPoin
 		}
 	};
 
-Back to the `voronoiMeshShatter()` function, we can now iterate through the other points, in order to generate a plane at half way between the current and the other point. At the same time we can check the distance limit. If this limit is reached for this point, it is for the next because the points are sorted.
+Back to the `voronoiMeshShatter()` function, we can now iterate through the other points, in order to generate a plane at half way between the current and the other point. In the previous 2D sketch, this plane is one of the red lines around the shard. At the same time we can check the distance limit. If this limit is reached for this point, it is for the next because the points are sorted.
 
 	for (j=1; j < numpoints; j++) {
 		// Create plane at half distance from current and other point
@@ -153,7 +153,7 @@ Back to the `voronoiMeshShatter()` function, we can now iterate through the othe
 		plane[3] = nlength / btScalar(2.);
 		planes.push_back(plane);
 
-With this new plane, we generate the points at the intersection of 3 planes.
+With this new plane added to the `planes` list, we generate the vertices at the intersection of 3 planes.
 
 		// Get vertices by 3 planes intersection, inside all planes
 		getVerticesInsidePlanes(planes, vertices, planeIndices);
@@ -161,7 +161,92 @@ With this new plane, we generate the points at the intersection of 3 planes.
 			break;
 		numplaneIndices = planeIndices.size();
 
- The helper function `getVerticesInsidePlanes()` is used. It takes the `planes` as *in* parameters and `vertices` and `planeIndices` as *out* parameters. `vertices` are the intersections of 3 planes and which are on the "right" side. `planeIndices` are the indices of the planes that gave the `vertices`. The definition of the function is provided below.
+The helper function `getVerticesInsidePlanes()` is used. It takes the `planes` as *in* parameters (input) and `vertices` and `planeIndices` as *out* parameters (returned values). `vertices` are the intersections of 3 planes and which are on the "right" side, (that is, not outside the shard). `planeIndices` are the indices of the planes that gave the `vertices`. After this, the number of vertices that consitute the shard may have been reduced to zero. In this case, we are done, the shard is empty and can leave the loop for the next shard.
+
+Otherwise, some planes may have not been involved. These planes are no longer part of the shard, thus they are not useful anymore. We remove them with the following code.
+
+		// Discard other planes
+		if (numplaneIndices != planes.size()) {
+			planeIndicesIter = planeIndices.begin();
+			for (k=0; k < numplaneIndices; k++) {
+				if (k != *planeIndicesIter)
+					planes[k] = planes[*planeIndicesIter];
+				planeIndicesIter++;
+			}
+		planes.resize(numplaneIndices);
+	}
+
+We end the inner loop by updating the distance limit (the one that determine when to stop generating a shard).
+
+		// Update maxDistance = max vertice distance * 2
+		maxDistance = vertices[0].length();
+		for (k=1; k < vertices.size(); k++) {
+			distance = vertices[k].length();
+			if (maxDistance < distance)
+				maxDistance = distance;
+		}
+		maxDistance *= btScalar(2.);
+	}
+	if (vertices.size() == 0)
+		continue;
+
+After this loop ends, we have all the vertices needed for the shard to be created. We do so first by using a `btConvexHullComputer` object to generate edges and faces of the object.
+
+	convexHC->compute(&vertices[0].getX(), sizeof(btVector3), vertices.size(),0.0,0.0);
+
+Then, for a better physics behaviour, we need to determine the center of mass of it. Indeed, Bullet assumes that the origin of each object is its center of mass.
+
+		// Calculate volume and center of mass (Stan Melax volume integration)
+		int numFaces = convexHC->faces.size();
+		btScalar volume = btScalar(0.);
+		btVector3 com(0., 0., 0.);
+		for (j=0; j < numFaces; j++) {
+			const btConvexHullComputer::Edge* edge = &convexHC->edges[convexHC->faces[j]];
+			v0 = edge->getSourceVertex();
+			v1 = edge->getTargetVertex();
+			edge = edge->getNextEdgeOfFace();
+			v2 = edge->getTargetVertex();
+			while (v2 != v0) {
+				// Counter-clockwise triangulated voronoi shard mesh faces (v0-v1-v2) and edges here...
+				btScalar vol = convexHC->vertices[v0].triple(convexHC->vertices[v1], convexHC->vertices[v2]);
+				volume += vol;
+				com += vol * (convexHC->vertices[v0] + convexHC->vertices[v1] + convexHC->vertices[v2]);
+				edge = edge->getNextEdgeOfFace();
+				v1 = v2;
+				v2 = edge->getTargetVertex();
+			}
+		}
+		com /= volume * btScalar(4.);
+		volume /= btScalar(6.);
+
+		// Shift all vertices relative to center of mass
+		int numVerts = convexHC->vertices.size();
+		for (j=0; j < numVerts; j++) {
+			convexHC->vertices[j] -= com;
+		}
+
+Finally, the rigid body is created and added to the world.
+
+		// Create Bullet Physics rigid body shards
+		btCollisionShape* shardShape = new btConvexHullShape(&(convexHC->vertices[0].getX()), convexHC->vertices.size());
+		shardShape->setMargin(CONVEX_MARGIN); // for this demo; note convexHC has optional margin parameter for this
+		btTransform shardTransform;
+		shardTransform.setIdentity();
+		shardTransform.setOrigin(curVoronoiPoint + com); // Shard's adjusted location
+		btDefaultMotionState* shardMotionState = new btDefaultMotionState(shardTransform);
+		btScalar shardMass(volume * matDensity);
+		btVector3 shardInertia;
+		shardShape->calculateLocalInertia(shardMass, shardInertia);
+		btRigidBody::btRigidBodyConstructionInfo shardRBInfo(shardMass, shardMotionState, shardShape, shardInertia);
+		RigidEntity* entity = world.createRigidEntity(shardRBInfo);
+		entity->getMesh().setColor(0, 0, 1);
+
+		cellnum ++;
+	}
+
+### Helper function `getVerticesInsidePlanes()`
+
+We mentionned this function earlier in the code but did not detailed it, thus here it is. This function takes all planes 3 by 3. For each of these triplets, if they are not parallel, it computes the intersection. It stores the intersected point and the corresponding plane indices only if the point is *inside* all the total planes. The definition of the function is provided below.
 
 	 void Voronoi::getVerticesInsidePlanes(const btAlignedObjectArray<btVector3>& planes,
 			btAlignedObjectArray<btVector3>& verticesOut,
@@ -219,103 +304,15 @@ With this new plane, we generate the points at the intersection of 3 planes.
 	}
 
 
----------------------------
+
+
+### Complete source
+
+The code is provided in the `Voronoi` class of the project source code.
+
 
 [voronoi-diagram]: img/voronoi/01_voronoi-diagram.png
-[intersection-done]: img/voronoi/02_intersection-done.png
+[intersection-done]: img/voronoi/02_intersection-gray-done.png
 
 [voronoi-diagram-source]: http://mathworld.wolfram.com/VoronoiDiagram.html
 [forum-voronoi]: http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=7707
-
-
-
-----------------------------
-(Notes)
-
-Blog posts, use Delaunay
-<http://www.joesfer.com/?p=60>
-<http://www.joesfer.com/?p=69>
-
-Volume Sampler
-	Seed points
-Splitting
-	Mesh cuts
-Hole filling
-	New faces
-
-
-Voronoi Diagrams
-----------------
-
-Cells for each point
-
-By using Delaunay Tetrahedralization
-	Dual graph of Voronoi graph
-	Tetrahedra whose corners are the Voronoi points
-
-Then easily get voronoi diagram from it
-	Fragments are intersection between mesh and planes
- 	
- 	For each voronoi cell C do 
-	 	For each face F in C do 
-	 		Obtain the plane P containing F 
- 			Split the geometry in two using P, and discard all the polygons on the front side of P 
-			Identify the set of vertices lying exactly on P, and generate  a new set of faces filling the hole. 
-		end 
-	end 
-
-
-Demo, Brute force method
---------------------
-
-<http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=7707>
-
-planes = collection of source convex object faces represented as plane equations
-foreach current_point in voronoi_cell_points
-	copy planes
-    max_distance = (furthest vertex from current_point) * 2 // NOT THERE
-    foreach other sorted_point by distance from current_point
-        if distance > max_distance
-            break # rest of sorted points too far, we're done with this current point
-        add new plane to planes, normal and distance = -(sorted_point - current_point) / 2
-        collect vertices (3-plane intersections) by planes that fall inside all planes only
-        delete planes that fell outside
-        max_distance = (furthest vertex from current_point) * 2
-    we now have vertices and/by planes for one voronoi 3D shard,
-    process vertices by plane (sort counter-clockwise, etc.) to get faces and edges
-
-    
-Demo code
-
-voronoiConvexHullShatter()
-	
-	For each Voronoi points
-
-		Sort all points by distance to current point
-
-		For each other Voronoi points
-
-			If distance > max_distance
-				break
-		
-			vertices, planeIndices = getVerticesInsidePlanes(planes) {
-
-				For each plane i
-					For each plane j (from i+1)
-
-						if i, j non colinear
-							For each plane k (from j+1)
-								if j,k and k,i non colinear
-									if quotient? non zero
-										calculate potential vertex
-										if potential vertex inside all planes
-											store potential vertex and the 3 intersecting planes (i,j,k)
-
-			}
-
-			if planeIndices not cover all existing planes
-
-
-
-(end notes)
-

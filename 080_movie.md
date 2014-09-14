@@ -39,7 +39,7 @@ Here are the configuration needed to use the libpng in the C++ project:
 
 **lib directory:**
 *&lt;libpng build folder>/*
-**lib name**
+**lib name:**
 *png*
 
 And do not forget to copy the *libpng16.dll* file to the project if you are on Windows.

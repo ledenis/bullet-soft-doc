@@ -999,267 +999,102 @@ body .markdown-body
     page-break-after: avoid;
   }
 }
-</style><title>060_voronoi</title></head><body><article class="markdown-body"><h1 id="voronoi-fracture-and-destruction"><a name="user-content-voronoi-fracture-and-destruction" href="#voronoi-fracture-and-destruction" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Voronoi Fracture and Destruction</h1>
-<p>To simulate the destruction of an object in 2D or 3D, an algorithm called <em>Voronoi fracturing</em> (or <em>shattering</em>) exists. It uses a mathematical concept called <em>Voronoi diagram</em>, hence its name. A Voronoi diagram describes how to partition a space from a set of points into regions, called <em>cells</em>. The cells are guaranteed to be convex and no overlapped, and will be the shards of the fracture. You can see a representation in 2D below.</p>
-<p><img alt="A Voronoi diagram" src="img/voronoi/01_voronoi-diagram.png" /></p>
-<p>(<a href="http://mathworld.wolfram.com/VoronoiDiagram.html">Source</a>)</p>
-<p>The algorithm and implementation which is explained in this chapter are extensively adapted from the demo VoronoiFracture from Bullet Physics.</p>
-<h2 id="the-approach"><a name="user-content-the-approach" href="#the-approach" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>The approach</h2>
-<p>The algorithm works using 3D planes. From a 3D mesh, it takes the faces (triangles) and turn them into planes, represented by their equations. The idea is as follows: each shard (cell) is created by taking a Voronoi point, then create more planes, located at half distance between this current point and other ones, in order to generate the boundaries of this cell. The process is repeated for each point.</p>
-<p>The pseudo code is shown below (adapted from the <a href="http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=7707">forum post</a> of the demo author).</p>
-<pre><code>planes = collection of source object faces represented as plane equations
-foreach current_point in voronoi_cell_points
-    copy planes
-    foreach other sorted_point by distance from current_point
-        if distance &gt; max_distance
-            break # rest of sorted points too far, we&rsquo;re done with this current_point
-        add new plane to planes, normal and distance = (sorted_point - current_point) / 2
-        collect vertices (3-plane intersections) by planes that fall inside all planes only
-        delete planes that fell outside
-        max_distance = (furthest vertex from current_point) * 2
-    we now have vertices and/by planes for one voronoi 3D shard,
-    process vertices by plane to get faces and edges</code></pre>
-<p>For example, for 5 Voronoi cell points, a 2D representation of the algorithm at the end of one iteration (the outer <em>foreach</em> loop) is shown below. A shard is generated and is represented by the white area. The red point is the <em>current_point</em>, the black ones are the other Voronoi points (which are <em>sorted_points</em>), the black and red lines represent the <em>planes</em>. The blue X represent the vertices at planes intersections. Note that the intersections which are <em>outside</em> the shard are not kept. In 3D, theses intersections would be formed by 3 planes.</p>
-<p><img alt="" src="img/voronoi/02_intersection-gray-done.png" />      </p>
-<p>This is a brute force method because it considers all Voronoi points, not only the neighbours. Another approach is to compute the Delaunay tetrahedralization, which connects points with tetrahedrons. From it, the Voronoi diagram can be extracted, since it is its dual graph. But this approach is not discussed here, since the method detailed here does not use Delaunay tetrahedralization.</p>
-<h2 id="the-implementation"><a name="user-content-the-implementation" href="#the-implementation" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>The implementation</h2>
-<p>The implementation is adapted from the <em>VoronoiFractureDemo.cpp</em> source code. Assuming that the source mesh and the random Voronoi points are initialized, we begin with creating a function, <code>voronoiMeshShatter()</code>, that takes as arguments the points, the mesh (defined by vertices and triangles indices), its position and rotation. The 2 other parameters here (the density and the world, as a cutom class) are not important for the shattering algorithm.</p>
-<pre><code>void Voronoi::voronoiMeshShatter(
-        const btAlignedObjectArray&lt;btVector3&gt;&amp; srcPoints,
-        const btAlignedObjectArray&lt;btVector3&gt;&amp; verts, const btAlignedObjectArray&lt;int&gt;&amp; indices,
-        const btQuaternion&amp; rot, const btVector3&amp; pos,
-        btScalar matDensity, World&amp; world) {
-    // srcPoints define voronoi cells in local space (avoid duplicates)
-    // verts = source mesh vertices in local space
-    // indices = source mesh vertices indices composing each triangle
-    // rot &amp; pos = source mesh quaternion rotation and translation
-    // matDensity = Material density for voronoi shard mass calculation
+</style><title>020_render</title></head><body><article class="markdown-body"><h1 id="rendering"><a name="user-content-rendering" href="#rendering" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Rendering</h1>
+<p>Bullet does not have any rendering capabilities. Although it has some interfaces such as <code>btIDebugDraw</code> that facilitate its implementation, Bullet remains mostly a physics engine. All this task is up to the user developer.</p>
+<p>To draw in 3D, <em>OpenGL</em> (Open Graphics Library), a graphics programming interface, can be used. It is commonly used to draw 3D scenes and is cross platform. However, this chapter does not explain how to use OpenGL, but rather gives some clues to use it with Bullet. If you don&rsquo;t know OpenGL, you can find lots of tutorials that exist on the internet. For example, the popular but old <a href="http://nehe.gamedev.net/">Nehe tutorials</a> for OpenGL 2. For OpenGL 3 or later, <a href="http://www.arcsynthesis.org/gltut/"><em>Learning Modern 3D Graphics Programming</em></a> is a good one. Though it is old and lots of features are deprecated in next versions, OpenGL 2 is used in the implementation provided with this documentation because of its simplicity in order to focus more on Bullet Physics.</p>
+<p>OpenGL, however, cannot by itself draw on the screen. It can only be used within an <em>OpenGL context</em>. This is usually provided by a <em>windowing toolkit</em>, which implements a window system and also keyboard / mouse interaction.</p>
+<p>Examples of popular windowing toolkit include:</p>
+<ul>
+<li><a href="https://www.libsdl.org/">SDL</a> (Simple DirectMedia Layer): a C library</li>
+<li><a href="http://www.sfml-dev.org/">SFML</a> (Simple and Fast Multimedia Library): a C++ library</li>
+<li><a href="http://qt-project.org/">Qt</a>: a C++ framework, which is basically used to build user interfaces windows (with buttons, text fields&hellip;)</li>
+</ul>
+<p>This chapter focuses on the SFML library because it is simple to use and is C++ friendly.</p>
+<p>Note: <em>GLUT</em> (OpenGL Utility Toolkit) is an other example of well known window toolkit, created for OpenGL, but since it is old and no longer maintained by its author, it is not recommended to use it.</p>
+<h2 id="sfml"><a name="user-content-sfml" href="#sfml" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>SFML</h2>
+<p>SFML can be found on its <a href="http://www.sfml-dev.org/download.php">download page on its website</a>. The package releases are ready to use, and do not need to be compiled.</p>
+<p>Here is the configuration to set for a C++ project that uses the library.</p>
+<p><strong>include:</strong><br />
+<em>&lt;sfml directory&gt;/include/</em></p>
+<p><strong>lib directory:</strong><br />
+<em>&lt;sfml directory&gt;/lib/</em><br />
+<strong>libraries:</strong><br />
+(libname[-s][-d], s for static, d for debug):</p>
+<ul>
+<li>sfml-graphics-d</li>
+<li>sfml-window-d</li>
+<li>sfml-system-d</li>
+</ul>
+<p>Please see the <a href="http://sfml-dev.org/tutorials/2.1/">tutorials page on its website</a>, <em>Getting started</em> section for more informations. Especially, to use OpenGL within an window in SFML, please see this <a href="http://www.sfml-dev.org/tutorials/2.1/window-opengl.php">tutorial</a>.</p>
+<h2 id="btidebugdraw-interface"><a name="user-content-btidebugdraw-interface" href="#btidebugdraw-interface" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>btIDebugDraw Interface</h2>
+<p>Fortunately, Bullet provides an interface called <code>btIDebugDraw</code> which helps drawing the basics in order to visualise the physics simulation. <br />
+As its name suggests, it is suitable for debugging purpose, or when a more optimised solution has yet to be implemented into the application. The user simply indicates how to draw basic shapes, for example a line in OpenGL.</p>
+<p>However, the modern OpenGL (version &gt;= 3) approach does not work well with this interface which requires the OpenGL <em>immediate mode</em> (with <code>glBegin()</code> and <code>glEnd()</code>). Indeed, OpenGL version 3 (or later) deprecated this mode in favor of a lower level approach with shader </p>
+<p>The steps to use <code>btDebugDraw</code> are as follows:</p>
+<ol>
+<li>Create a subclass of <code>btIDebugDraw</code></li>
+<li>Implement at least these 6 <em>virtual pure functions</em> (but can be left empty):<ul>
+<li><code>void drawLine(const btVector3&amp; from,const btVector3&amp; to,const btVector3&amp; color)</code></li>
+<li><code>void drawContactPoint(const btVector3&amp; PointOnB,const btVector3&amp; normalOnB,btScalar distance,int lifeTime,const btVector3&amp; color)</code></li>
+<li><code>void reportErrorWarning(const char* warningString)</code></li>
+<li><code>void draw3dText(const btVector3&amp; location,const char* textString)</code></li>
+<li><code>void setDebugMode(int debugMode)</code></li>
+<li><code>int getDebugMode() const</code></li>
+</ul>
+</li>
+<li>Set this debug drawer to the Bullet world via <em>setDebugDrawer()</em>:<br />
+<code>dynamicsWorld-&gt;setDebugDrawer(debugDraw);</code></li>
+</ol>
+<p>Here is a minimal example of a class that implement it (<em>#include</em> directives omitted):</p>
+<p><em>In DebugDraw.h:</em></p>
+<pre><code>class DebugDraw: public btIDebugDraw {
+public:
+    virtual void drawLine(const btVector3&amp; from, const btVector3&amp; to,
+            const btVector3&amp; color);
+    virtual void drawContactPoint(const btVector3&amp; PointOnB,
+            const btVector3&amp; normalOnB, btScalar distance, int lifeTime,
+            const btVector3&amp; color);
 
-    //&hellip;
-}</code></pre>
-<p>Meshes are generally described in local space (the origin is at the center of its vertices), as it is the case here. THe points are also in local space. We will convert them to world space.</p>
-<pre><code>// Convert verts to world space
-int numverts = verts.size();
-chverts.resize(numverts);
-for (i=0; i &lt; numverts; i++) {
-    chverts[i] = quatRotate(rot, verts[i]) + pos;
-}
+    virtual void reportErrorWarning(const char* warningString);
 
-// Convert points to world space
-int numpoints = srcPoints.size();
-points.resize(numpoints);
-for (i=0; i &lt; numpoints; i++) {
-    points[i] = quatRotate(rot, srcPoints[i]) + pos;
-}
-sortedVoronoiPoints.copyFromArray(points);
-</code></pre>
-<h3 id="plane-representation"><a name="user-content-plane-representation" href="#plane-representation" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Plane representation</h3>
-<p>We need to get the planes formed by the faces of the mesh. But how to represent a plane? It can be seen as an cartesian equation <code>ax + by + cz = d</code> where <code>a</code>, <code>b</code>, <code>c</code> and <code>d</code> are the 4 parameters. The vector <em>(a, b, c)</em> represent the <em>normal</em>, the scalar <em>d</em> represents the <em>distance</em>. These values can be stored in the Bullet&rsquo;s <code>btVector3</code>, which has a &ldquo;hidden&rdquo; 4th value that can be accessed with the <code>[]</code> operator, like this: <code>v[3]</code>.</p>
-<p>Since the mesh is composed of triangles, the planes can be found using some geometry. If <code>v0</code>, <code>v1</code>, <code>v2</code> are the corner vertices of a triangle, the formulas in pseudo-code:</p>
-<pre><code>normal   = ( (v1 - v0).cross(v2 - v0) ).normalize();
-distance = normal.dot(v0);
-</code></pre>
-<p>The actual code is:</p>
-<pre><code>// Get convexPlanes from triangles
-int v0, v1, v2; // vertices
-for (i=0; i &lt; indices.size();) {
-    v0 = indices[i++];
-    v1 = indices[i++];
-    v2 = indices[i++];
-    // plane: 4 values stored in btVector3, as equation ax + by + cz = d
-    // (4th value accessed as plane[3])
-    plane = (chverts[v1]-chverts[v0]).cross(chverts[v2]-chverts[v0]).normalize();
-    plane[3] = plane.dot(chverts[v0]);
-    convexPlanes.push_back(plane);
-}
-</code></pre>
-<h3 id="loop"><a name="user-content-loop" href="#loop" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Loop</h3>
-<p>We that the mesh and points are prepared, we can start to create the cells. To do this, the Voronoi points are taken one by one with a loop. </p>
-<pre><code>// For each voronoi point
-for (i=0; i &lt; numpoints; i++) {
-    curVoronoiPoint = points[i];
+    virtual void draw3dText(const btVector3&amp; location, const char* textString);
 
-    //&hellip;
-}</code></pre>
-<p>During the iteration, we will loop over the other points, sorted by the distance to the current point. Thus, we start with the point that is the nearest, then go to the next nearest, and so on. We stop when the distance to the next point is greater than a limit. But before that, we will make the calculations of the planes distances easier by shifting the their equations relatively to the current point.</p>
-<pre><code>planes.copyFromArray(convexPlanes);
-// Shift all planes relative to current point
-for (j=0; j &lt; numconvexPlanes; j++) {
-    planes[j][3] -= planes[j].dot(curVoronoiPoint);
-}
-</code></pre>
-<p>And we sort the points by distance.</p>
-<pre><code>maxDistance = SIMD_INFINITY;
+    virtual void setDebugMode(int debugMode);
 
-// Sort all points by distance from current point
-sortedVoronoiPoints.heapSort(pointCmp());
-</code></pre>
-<p>The comparator <code>pointCmp()</code> must be defined elsewhere. Note that <code>curVoronoiPoint</code> also need to be declared outside in order to be accessed from this comparator&rsquo;s scope.</p>
-<pre><code>static btVector3 curVoronoiPoint;
-
-// Comparator to sort planes by distance from curVoronoiPoint
-struct pointCmp
-{
-    bool operator()(const btVector3&amp; p1, const btVector3&amp; p2) const
-    {
-        float v1 = (p1-curVoronoiPoint).length2();
-        float v2 = (p2-curVoronoiPoint).length2();
-        bool result0 = v1 &lt; v2;
-        return result0;
-    }
+    virtual int getDebugMode() const;
 };
 </code></pre>
-<p>Back to the <code>voronoiMeshShatter()</code> function, we can now iterate through the other points, in order to generate a plane at half way between the current and the other point. In the previous 2D sketch, this plane is one of the red lines around the shard. At the same time we can check the distance limit. If this limit is reached for this point, it is for the next because the points are sorted.</p>
-<pre><code>for (j=1; j &lt; numpoints; j++) {
-    // Create plane at half distance from current and other point
-    normal = sortedVoronoiPoints[j] - curVoronoiPoint;
-    nlength = normal.length();
+<p><em>In DebugDraw.cpp:</em></p>
+<pre><code>void DebugDraw::drawLine(const btVector3&amp; from, const btVector3&amp; to,
+        const btVector3&amp; color) {
+    glPushMatrix();
 
-    if (nlength &gt; maxDistance) // quit if point is too far
-        break;
+    glColor3f(color.m_floats[0], color.m_floats[1], color.m_floats[2]);
+    glBegin(GL_LINES);
+    glVertex3f(from.m_floats[0], from.m_floats[1], from.m_floats[2]);
+    glVertex3f(to.m_floats[0], to.m_floats[1], to.m_floats[2]);
+    glEnd();
 
-    plane = normal.normalized();
-    plane[3] = nlength / btScalar(2.);
-    planes.push_back(plane);
-</code></pre>
-<p>With this new plane added to the <code>planes</code> list, we generate the vertices at the intersection of 3 planes.</p>
-<pre><code>    // Get vertices by 3 planes intersection, inside all planes
-    getVerticesInsidePlanes(planes, vertices, planeIndices);
-    if (vertices.size() == 0)
-        break;
-    numplaneIndices = planeIndices.size();
-</code></pre>
-<p>The helper function <code>getVerticesInsidePlanes()</code> is used. It takes the <code>planes</code> as <em>in</em> parameters (input) and <code>vertices</code> and <code>planeIndices</code> as <em>out</em> parameters (returned values). <code>vertices</code> are the intersections of 3 planes and which are on the &ldquo;right&rdquo; side, (that is, not outside the shard). <code>planeIndices</code> are the indices of the planes that gave the <code>vertices</code>. After this, the number of vertices that consitute the shard may have been reduced to zero. In this case, we are done, the shard is empty and can leave the loop for the next shard.</p>
-<p>Otherwise, some planes may have not been involved. These planes are no longer part of the shard, thus they are not useful anymore. We remove them with the following code.</p>
-<pre><code>    // Discard other planes
-    if (numplaneIndices != planes.size()) {
-        planeIndicesIter = planeIndices.begin();
-        for (k=0; k &lt; numplaneIndices; k++) {
-            if (k != *planeIndicesIter)
-                planes[k] = planes[*planeIndicesIter];
-            planeIndicesIter++;
-        }
-    planes.resize(numplaneIndices);
+    glPopMatrix();
+}
+
+void DebugDraw::drawContactPoint(const btVector3&amp; PointOnB,
+        const btVector3&amp; normalOnB, btScalar distance, int lifeTime,
+        const btVector3&amp; color) {
+}
+
+void DebugDraw::reportErrorWarning(const char* warningString) {
+}
+
+void DebugDraw::draw3dText(const btVector3&amp; location, const char* textString) {
+}
+
+void DebugDraw::setDebugMode(int debugMode) {
+}
+
+int DebugDraw::getDebugMode() const {
+    return DBG_DrawWireframe;
 }
 </code></pre>
-<p>We end the inner loop by updating the distance limit (the one that determine when to stop generating a shard).</p>
-<pre><code>    // Update maxDistance = max vertice distance * 2
-    maxDistance = vertices[0].length();
-    for (k=1; k &lt; vertices.size(); k++) {
-        distance = vertices[k].length();
-        if (maxDistance &lt; distance)
-            maxDistance = distance;
-    }
-    maxDistance *= btScalar(2.);
-}
-if (vertices.size() == 0)
-    continue;
-</code></pre>
-<p>After this loop ends, we have all the vertices needed for the shard to be created. We do so first by using a <code>btConvexHullComputer</code> object to generate edges and faces of the object.</p>
-<pre><code>convexHC-&gt;compute(&amp;vertices[0].getX(), sizeof(btVector3), vertices.size(),0.0,0.0);
-</code></pre>
-<p>Then, for a better physics behaviour, we need to determine the center of mass of it. Indeed, Bullet assumes that the origin of each object is its center of mass.</p>
-<pre><code>    // Calculate volume and center of mass (Stan Melax volume integration)
-    int numFaces = convexHC-&gt;faces.size();
-    btScalar volume = btScalar(0.);
-    btVector3 com(0., 0., 0.);
-    for (j=0; j &lt; numFaces; j++) {
-        const btConvexHullComputer::Edge* edge = &amp;convexHC-&gt;edges[convexHC-&gt;faces[j]];
-        v0 = edge-&gt;getSourceVertex();
-        v1 = edge-&gt;getTargetVertex();
-        edge = edge-&gt;getNextEdgeOfFace();
-        v2 = edge-&gt;getTargetVertex();
-        while (v2 != v0) {
-            // Counter-clockwise triangulated voronoi shard mesh faces (v0-v1-v2) and edges here&hellip;
-            btScalar vol = convexHC-&gt;vertices[v0].triple(convexHC-&gt;vertices[v1], convexHC-&gt;vertices[v2]);
-            volume += vol;
-            com += vol * (convexHC-&gt;vertices[v0] + convexHC-&gt;vertices[v1] + convexHC-&gt;vertices[v2]);
-            edge = edge-&gt;getNextEdgeOfFace();
-            v1 = v2;
-            v2 = edge-&gt;getTargetVertex();
-        }
-    }
-    com /= volume * btScalar(4.);
-    volume /= btScalar(6.);
-
-    // Shift all vertices relative to center of mass
-    int numVerts = convexHC-&gt;vertices.size();
-    for (j=0; j &lt; numVerts; j++) {
-        convexHC-&gt;vertices[j] -= com;
-    }</code></pre>
-<p>Finally, the rigid body is created and added to the world.</p>
-<pre><code>    // Create Bullet Physics rigid body shards
-    btCollisionShape* shardShape = new btConvexHullShape(&amp;(convexHC-&gt;vertices[0].getX()), convexHC-&gt;vertices.size());
-    shardShape-&gt;setMargin(CONVEX_MARGIN); // for this demo; note convexHC has optional margin parameter for this
-    btTransform shardTransform;
-    shardTransform.setIdentity();
-    shardTransform.setOrigin(curVoronoiPoint + com); // Shard&rsquo;s adjusted location
-    btDefaultMotionState* shardMotionState = new btDefaultMotionState(shardTransform);
-    btScalar shardMass(volume * matDensity);
-    btVector3 shardInertia;
-    shardShape-&gt;calculateLocalInertia(shardMass, shardInertia);
-    btRigidBody::btRigidBodyConstructionInfo shardRBInfo(shardMass, shardMotionState, shardShape, shardInertia);
-    RigidEntity* entity = world.createRigidEntity(shardRBInfo);
-    entity-&gt;getMesh().setColor(0, 0, 1);
-
-    cellnum ++;
-}</code></pre>
-<h3 id="helper-function-getverticesinsideplanes"><a name="user-content-helper-function-getverticesinsideplanes" href="#helper-function-getverticesinsideplanes" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Helper function <code>getVerticesInsidePlanes()</code></h3>
-<p>We mentionned this function earlier in the code but did not detailed it, thus here it is. This function takes all planes 3 by 3. For each of these triplets, if they are not parallel, it computes the intersection. It stores the intersected point and the corresponding plane indices only if the point is <em>inside</em> all the total planes. The definition of the function is provided below.</p>
-<pre><code> void Voronoi::getVerticesInsidePlanes(const btAlignedObjectArray&lt;btVector3&gt;&amp; planes,
-        btAlignedObjectArray&lt;btVector3&gt;&amp; verticesOut,
-        std::set&lt;int&gt;&amp; planeIndicesOut)
-{
-    // Based on btGeometryUtil.cpp (Gino van den Bergen / Erwin Coumans)
-    verticesOut.resize(0);
-    planeIndicesOut.clear();
-    const int numPlanes = planes.size();
-    int i, j, k, l;
-    for (i=0;i&lt;numPlanes;i++)
-    {
-        const btVector3&amp; N1 = planes[i];
-        for (j=i+1;j&lt;numPlanes;j++)
-        {
-            const btVector3&amp; N2 = planes[j];
-            btVector3 n1n2 = N1.cross(N2);
-            if (n1n2.length2() &gt; btScalar(0.0001))
-            {
-                for (k=j+1;k&lt;numPlanes;k++)
-                {
-                    const btVector3&amp; N3 = planes[k];
-                    btVector3 n2n3 = N2.cross(N3);
-                    btVector3 n3n1 = N3.cross(N1);
-                    if ((n2n3.length2() &gt; btScalar(0.0001)) &amp;&amp; 
-                            (n3n1.length2() &gt; btScalar(0.0001) ))
-                    {
-                        btScalar quotient = (N1.dot(n2n3));
-                        if (btFabs(quotient) &gt; btScalar(0.0001))
-                        {
-                            btVector3 potentialVertex = 
-                                    (n2n3 * N1[3] + n3n1 * N2[3] + n1n2 * N3[3]) * 
-                                    (btScalar(1.) / quotient);
-                            for (l=0; l&lt;numPlanes; l++)
-                            {
-                                const btVector3&amp; NP = planes[l];
-                                if (btScalar(NP.dot(potentialVertex))-btScalar(NP[3]) &gt; 
-                                        btScalar(0.000001))
-                                    break;
-                            }
-                            if (l == numPlanes)
-                            {
-                                // vertex (three plane intersection) inside all planes
-                                verticesOut.push_back(potentialVertex);
-                                planeIndicesOut.insert(i);
-                                planeIndicesOut.insert(j);
-                                planeIndicesOut.insert(k);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-</code></pre>
-<h3 id="complete-source"><a name="user-content-complete-source" href="#complete-source" class="headeranchor-link"  aria-hidden="true"><span class="headeranchor"></span></a>Complete source</h3>
-<p>The code is provided in the <code>Voronoi</code> class of the project source code.</p></article></body></html>
+<p><code>drawLine()</code> is the method that calls the drawing functions. <code>getDebugMode()</code> always returns the value <code>DBG_DrawWireframe</code>, which means to be the debug drawer always draw as wireframes. Despite the fact that the 4 other functions are not used, they must be implemented. Here is what a sphere may look like when rendered via the debug drawer:</p>
+<p><img alt="" src="img/render/01_sphere.png" /></p></article></body></html>

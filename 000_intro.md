@@ -25,6 +25,10 @@ To demonstrate the differents points discussed in this documentation, an impleme
 
 The scenario consists in a sphere on a soft (that is not rigid) and rugged ground. Other objects fall from above and strike the sphere which breaks into parts.
 
+Here is a short demo of the program.
+
+[![][app-img]][app-demo]
+
 Outline
 -------
 
@@ -40,6 +44,8 @@ Outline
 
 * [More on Soft Bodies][soft-more]
 
+* [Limitations][limit]
+
 
 **Additional concepts**
 
@@ -49,21 +55,31 @@ Outline
 
 * [Generating a Movie][movie]
 
+[Conclusion][conclusion]
+
+[About][about]
+
 
 [bullet-logo]: img/bullet-logo.png
+[app-img]: img/demo.png
 
 [bullet-3]: https://github.com/bulletphysics/bullet3
 [bullet-2-release]: https://code.google.com/p/bullet/downloads/list
 [bullet-wiki]: http://bulletphysics.org/mediawiki-1.5.8
+[app-demo]: https://www.dropbox.com/s/nc3yoc3gpyh5l04/movie_demo.avi?dl=0
 
 
 
 [setup]: 010_setup.html
-[render]: 030_render.html
+[render]: 020_render.html
 [rigid]: 021_rigid.html
 [soft]: 040_soft.html
 [soft-more]: 041_soft_more.html
+[limit]: 050_limit.html
 
 [import]: 055_import.html
 [voronoi]: 060_voronoi.html
 [movie]: 080_movie.html
+
+[conclusion]: 900_conclusion.html
+[about]: 999_about.html

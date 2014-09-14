@@ -1,6 +1,8 @@
 Rigid Bodies
 ============
 
+Rigid bodies are the base of physics simulation. They are undeformable objects and can represent most of the real life objects. Each one needs a collision shape (that can be shared) in order to interact with other bodies. The basics to create a rigid body is explained in the [*hello world* article][hello-wiki2], as well as in this short [article on rigid bodies][rigid-wiki] on the official Bullet wiki.
+
 Constraints
 -----------
 
@@ -29,7 +31,9 @@ Note: Soft bodies cannot be linked with *constraints*, the equivalent for them i
 Sticky effect
 -------------
 
-We can simulate a sticky effect between rigid bodies, that is to link the bodies together on contact, and release the link when the force between them reaches a threshold. To link bodies, we can use **constraints**. To detect collision contacts, we can use loop all the contact **manifolds** (pair of colliding bodies).
+Here is a nice effect that can be useful to mimic a sticky object. 
+
+We can simulate this sticky effect between rigid bodies by linking the bodies together on contact, and releasing this link when the force applied between them reaches a certain threshold. To link bodies, we can use **constraints**. To detect collision contacts, we can loop all the contact **manifolds** (pair of colliding bodies).
 
 The manifolds are accessible through the *collision dispatcher* of the world. Once we get it, we can iterating over the manifolds, and extract the 2 colliding bodies. Also make sure that `checkCollideWith()` returns `true`. Otherwise, a link might already exists. A manifold can contain several contacts, for example if a cube is standing on the floor. But in this case, we only process one. In addition, we check if the contact is a penetration (distance < 0).
 
@@ -74,7 +78,7 @@ The manifolds are accessible through the *collision dispatcher* of the world. On
 		}
 	}
 
-Then we can link the bodies. Here we use btFixedConstraint. The anchor points need to be set to local coordinates. The code is adapted from a [post][link-code-forum] in the forums.
+Then we can link the bodies. Here we use btFixedConstraint. The anchor points need to be set to local coordinates. The code is adapted from a [post][link-code-forum] on the forums.
 
 	void linkRigidBodies(btRigidBody* bodyA, btRigidBody* bodyB,
 			const btVector3& anchorA, const btVector3& anchorB) {
@@ -107,6 +111,7 @@ Then we can link the bodies. Here we use btFixedConstraint. The anchor points ne
 
 The breaking of the link is automatically handled by Bullet when using `setBreakingImpulseThreshold()`.
 
-
+[hello-wiki2]: http://bulletphysics.org/mediawiki-1.5.8/index.php/Hello_World
+[rigid-wiki]: http://bulletphysics.org/mediawiki-1.5.8/index.php/Rigid_Bodies
 [constraints-wiki]: http://bulletphysics.org/mediawiki-1.5.8/index.php/Constraints
 [link-code-forum]: http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=8935&view=previous#p30241
